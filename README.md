@@ -20,12 +20,15 @@ A first-person-ish 3D diving game built with [Babylon.js](https://www.babylonjs.
 
 | Species | Points |
 | --- | --- |
-| 🟠 Clownfish | 10 |
-| 🔵 Lanternfish | 25 |
-| 🟣 Jellyfish | 45 |
+| ⚪ Sardine (swim through the school!) | 8 each |
+| 🟠 Clownfish | 15 |
+| 🔵 Blue Tang | 28 |
+| 🟡 Seahorse | 45 |
 | 🟢 Golden Angler (rare) | 90 |
 
-Plus a **Depth Bonus** (+40 at each 20% of the way down) and a **Flawless Bonus** at the seabed (+600 for a no-hit dive, +200 if you took one hit).
+A **magnet** sucks in nearby species, and quick consecutive catches build a **combo multiplier** (up to ×5). Plus a **Depth Bonus** (+40 each 20% down) and a **Flawless Bonus** at the seabed (+600 no-hit, +200 one hit).
+
+**Hazards** actively hunt you: 🦈 sharks and 🐙 octopuses chase when you're in range, and 🪼 jellyfish drift as sting hazards. First hit costs points; the second ends the dive.
 
 ## ✨ Graphics
 

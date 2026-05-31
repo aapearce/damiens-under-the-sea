@@ -8,6 +8,8 @@ export const dom = {
   depthFill: $("depth-fill"),
   depthDiver: $("depth-diver"),
   depthText: $("depth-text"),
+  combo: $("combo"),
+  popups: $("popups"),
   menu: $("menu"),
   over: $("over"),
   overReason: $("over-reason"),
@@ -31,6 +33,28 @@ export function setHudVisible(v) { dom.hud.classList.toggle("hidden", !v); }
 
 export function setScore(n) { dom.score.textContent = Math.round(n); }
 export function setDanger(on) { dom.danger.classList.toggle("hidden", !on); }
+
+export function setCombo(mult) {
+  if (mult > 1) {
+    dom.combo.textContent = "COMBO ×" + mult;
+    dom.combo.classList.remove("hidden");
+    dom.combo.style.animation = "none"; void dom.combo.offsetWidth; dom.combo.style.animation = "";
+  } else {
+    dom.combo.classList.add("hidden");
+  }
+}
+
+// floating "+N" at screen pixel (x,y)
+export function popup(text, x, y, color = "#ffd27f") {
+  const el = document.createElement("div");
+  el.className = "popup";
+  el.textContent = text;
+  el.style.left = x + "px";
+  el.style.top = y + "px";
+  el.style.color = color;
+  dom.popups.appendChild(el);
+  el.addEventListener("animationend", () => el.remove());
+}
 
 export function setDepth(t, meters, maxMeters) {
   const pct = Math.max(0, Math.min(1, t)) * 100;

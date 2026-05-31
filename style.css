@@ -89,6 +89,20 @@ html, body {
   text-shadow: 0 0 10px #ff0033; animation: dpulse .7s ease-in-out infinite alternate; }
 @keyframes dpulse { from { opacity: .5; } to { opacity: 1; } }
 
+#combo { margin-top: 6px; font-size: 20px; font-weight: 900; letter-spacing: 1px; color: #58f5ff;
+  text-shadow: 0 0 12px #2a9fff; animation: cpop .3s ease-out; }
+@keyframes cpop { from { transform: scale(1.5); } to { transform: scale(1); } }
+
+/* floating "+points" popups */
+#popups { position: absolute; inset: 0; z-index: 22; pointer-events: none; overflow: hidden; }
+.popup { position: absolute; transform: translate(-50%, -50%); font-weight: 900; font-size: 22px;
+  letter-spacing: 1px; text-shadow: 0 0 10px rgba(0,0,0,0.6); animation: floatUp 0.95s ease-out forwards; }
+@keyframes floatUp {
+  0% { opacity: 0; transform: translate(-50%, -40%) scale(0.7); }
+  20% { opacity: 1; transform: translate(-50%, -55%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -120%) scale(1); }
+}
+
 #depth-wrap { position: absolute; top: 64px; right: 22px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 #depth-label { font-size: 12px; letter-spacing: 3px; opacity: 0.75; }
 #depth-bar { position: relative; width: 14px; height: min(46vh, 360px); border-radius: 8px;
