@@ -50,10 +50,10 @@ class Game {
     scene.clearColor = SURFACE.clone();
     scene.fogMode = BABYLON.Scene.FOGMODE_EXP2;
     scene.fogColor = SURFACE.clone();
-    scene.fogDensity = 0.011;
+    scene.fogDensity = 0.006;
 
-    const cam = new BABYLON.UniversalCamera("cam", new BABYLON.Vector3(0, 6.5, -10), scene);
-    cam.minZ = 0.1; cam.maxZ = 400; cam.fov = 1.1;
+    const cam = new BABYLON.UniversalCamera("cam", new BABYLON.Vector3(0, 7.5, -12.5), scene);
+    cam.minZ = 0.1; cam.maxZ = 500; cam.fov = 1.2;
     this.camera = cam; this._updateFov();
 
     this.sun = new BABYLON.HemisphericLight("sun", new BABYLON.Vector3(0, 1, 0.15), scene);
@@ -72,8 +72,8 @@ class Game {
     pipe.bloomEnabled = true; pipe.bloomThreshold = 0.5; pipe.bloomWeight = 0.7; pipe.bloomKernel = 64; pipe.fxaaEnabled = true;
     pipe.imageProcessing.contrast = 1.2; pipe.imageProcessing.exposure = 1.05;
     pipe.imageProcessing.vignetteEnabled = true;
-    pipe.imageProcessing.vignetteWeight = 2.2;
-    pipe.imageProcessing.vignetteColor = new BABYLON.Color4(0, 0.02, 0.05, 1);
+    pipe.imageProcessing.vignetteWeight = 0.7;
+    pipe.imageProcessing.vignetteColor = new BABYLON.Color4(0, 0.04, 0.09, 1);
 
     this.diver = new Diver(scene);
     this._buildEnvironment(scene);
@@ -83,7 +83,7 @@ class Game {
   _updateFov() {
     if (!this.camera) return;
     const aspect = this.engine.getRenderWidth() / Math.max(1, this.engine.getRenderHeight());
-    const BASE_V = 1.1, MIN_H = 1.4, MAX_V = 1.55;
+    const BASE_V = 1.2, MIN_H = 1.5, MAX_V = 1.65;
     const hAtBase = 2 * Math.atan(Math.tan(BASE_V / 2) * aspect);
     let v = BASE_V;
     if (hAtBase < MIN_H) v = 2 * Math.atan(Math.tan(MIN_H / 2) / aspect);
@@ -96,16 +96,18 @@ class Game {
     const rayTex = this._gradientTexture(scene);
     const rayMat = new BABYLON.StandardMaterial("rayMat", scene);
     rayMat.diffuseTexture = rayTex; rayMat.opacityTexture = rayTex;
-    rayMat.emissiveColor = new BABYLON.Color3(0.65, 0.9, 1.0);
+    rayMat.emissiveColor = new BABYLON.Color3(0.45, 0.7, 0.85);
     rayMat.disableLighting = true; rayMat.backFaceCulling = false;
     rayMat.alphaMode = BABYLON.Engine.ALPHA_ADD;
+    // A few soft, scattered, far-away sunbeams from the surface — NOT a wall of planes
+    // around the player. Spread wide and deep, randomly oriented so they read as beams.
     this.rays = [];
-    for (let i = 0; i < 9; i++) {
-      const s = BABYLON.MeshBuilder.CreatePlane("ray" + i, { width: 5 + Math.random() * 4, height: 170 }, scene);
+    for (let i = 0; i < 6; i++) {
+      const s = BABYLON.MeshBuilder.CreatePlane("ray" + i, { width: 7 + Math.random() * 6, height: 230 }, scene);
       s.material = rayMat;
-      s.position.set((Math.random() * 2 - 1) * (PLAY_HALF_X + 10), -60, (Math.random() * 2 - 1) * 16 + 8);
-      s.baseRot = (Math.random() * 2 - 1) * 0.25; s.seed = Math.random() * 10;
-      s.rotation.z = s.baseRot; s.rotation.y = -0.2;
+      s.position.set((Math.random() * 2 - 1) * 70, -70, 20 + Math.random() * 70);
+      s.baseRot = (Math.random() * 2 - 1) * 0.2; s.seed = Math.random() * 10;
+      s.rotation.z = s.baseRot; s.rotation.y = Math.random() * Math.PI;
       this.rays.push(s);
     }
 
@@ -120,9 +122,9 @@ class Game {
       const m = moteSrc.createInstance("mote" + i);
       const sc = 0.05 + Math.random() * 0.16; m.scaling.set(sc, sc, sc);
       m.basePos = {
-        x: (Math.random() * 2 - 1) * 60,
+        x: (Math.random() * 2 - 1) * 95,
         y: -Math.random() * 120,
-        z: (Math.random() * 2 - 1) * 40 + 5,
+        z: (Math.random() * 2 - 1) * 65 + 15,
       };
       m.position.set(m.basePos.x, m.basePos.y, m.basePos.z);
       m.swim = Math.random() * Math.PI * 2;
@@ -169,8 +171,8 @@ class Game {
     const t = new BABYLON.DynamicTexture("rayGrad", { width: 32, height: 256 }, scene, false);
     const ctx = t.getContext();
     const g = ctx.createLinearGradient(0, 0, 0, 256);
-    g.addColorStop(0, "rgba(255,255,255,0.5)");
-    g.addColorStop(0.5, "rgba(200,240,255,0.14)");
+    g.addColorStop(0, "rgba(255,255,255,0.3)");
+    g.addColorStop(0.5, "rgba(200,240,255,0.08)");
     g.addColorStop(1, "rgba(255,255,255,0)");
     ctx.fillStyle = g; ctx.fillRect(0, 0, 32, 256);
     t.hasAlpha = true; t.update(); return t;
@@ -196,7 +198,7 @@ class Game {
     for (const c of this.creatures) c.dispose();
     this.creatures = []; this.flocks = [];
     this.diver.setPos(0, 0, 0); this.diver.vx = 0; this.diver.vz = 0;
-    this.camera.position.set(0, 6.5, -10);
+    this.camera.position.set(0, 7.5, -12.5);
     this.score = 0; this.hits = 0; this.invuln = 0; this.elapsed = 0;
     this.nextSpawnY = -16; this.milestones = 0;
     this.combo = 0; this.comboTimer = 0;
@@ -280,18 +282,18 @@ class Game {
     const depthT = clamp(-diver.pos.y / DEPTH, 0, 1);
     diver.update(dt, depthT);
 
-    // smooth camera glide
-    this.camera.position.x += (diver.pos.x * 0.4 - this.camera.position.x) * Math.min(1, dt * 4);
-    this.camera.position.z += ((diver.pos.z - 10) - this.camera.position.z) * Math.min(1, dt * 4);
-    this.camera.position.y = diver.pos.y + 6.5;
-    this.camera.setTarget(new BABYLON.Vector3(diver.pos.x * 0.55, diver.pos.y - 5, diver.pos.z + 4));
+    // smooth camera glide — pulled back & less steep so the sea feels wide open
+    this.camera.position.x += (diver.pos.x * 0.45 - this.camera.position.x) * Math.min(1, dt * 4);
+    this.camera.position.z += ((diver.pos.z - 12.5) - this.camera.position.z) * Math.min(1, dt * 4);
+    this.camera.position.y = diver.pos.y + 7.5;
+    this.camera.setTarget(new BABYLON.Vector3(diver.pos.x * 0.5, diver.pos.y - 3.5, diver.pos.z + 8));
 
     // torch + depth color grade
     this.torch.position.set(diver.pos.x, diver.pos.y + 0.5, diver.pos.z);
     this.torch.intensity = 0.3 + depthT * 1.8;
     const col = depthT < 0.5 ? BABYLON.Color3.Lerp(SURFACE, MID, depthT * 2) : BABYLON.Color3.Lerp(MID, DEEP, (depthT - 0.5) * 2);
     this.scene.clearColor = col; this.scene.fogColor = col;
-    this.scene.fogDensity = 0.011 + depthT * 0.03;
+    this.scene.fogDensity = 0.006 + depthT * 0.02;
     this.sun.intensity = 1.0 - depthT * 0.88;
 
     // recycle world-fixed motes around the camera

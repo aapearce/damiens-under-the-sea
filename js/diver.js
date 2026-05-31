@@ -1,7 +1,7 @@
 // The player's scuba diver: a slim, streamlined figure that descends head-first,
 // with kicking fins, a torch beam that strengthens with depth, and a bubble trail.
-export const PLAY_HALF_X = 14;
-export const PLAY_HALF_Z = 8;
+export const PLAY_HALF_X = 17;
+export const PLAY_HALF_Z = 10;
 export const DIVER_RADIUS = 0.95;
 
 export class Diver {
