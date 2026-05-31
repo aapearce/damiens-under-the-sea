@@ -169,6 +169,60 @@ class Game {
     }
     this.seabedGroup.setEnabled(false);
     this.labelMats = {};
+
+    this._buildBackdrop(scene);
+  }
+
+  _buildBackdrop(scene) {
+    // ---- caustic light ripples projected from the surface (strong up top, fades deep) ----
+    const proj = this._causticTexture(scene); proj.uScale = 2; proj.vScale = 2; this.causticProj = proj;
+    const sunC = new BABYLON.SpotLight("sunCaustic", new BABYLON.Vector3(0, 30, 0), new BABYLON.Vector3(0, -1, 0.05), Math.PI / 1.6, 2, scene);
+    sunC.projectionTexture = proj;
+    sunC.diffuse = new BABYLON.Color3(0.6, 0.9, 1.0);
+    sunC.intensity = 0; sunC.range = 80;
+    this.sunCaustic = sunC;
+
+    // ---- distant reef silhouettes far out to the sides (world-fixed, recycled) ----
+    const reefMat = new BABYLON.StandardMaterial("reefMat", scene);
+    reefMat.diffuseColor = new BABYLON.Color3(0.05, 0.09, 0.12);
+    reefMat.emissiveColor = new BABYLON.Color3(0.01, 0.03, 0.05);
+    reefMat.specularColor = new BABYLON.Color3(0, 0, 0);
+    this.reefs = [];
+    for (let i = 0; i < 7; i++) {
+      const reef = BABYLON.MeshBuilder.CreateCylinder("reef" + i, { height: 26 + Math.random() * 30, diameterBottom: 14 + Math.random() * 16, diameterTop: 0, tessellation: 6 }, scene);
+      reef.material = reefMat;
+      reef.basePos = { x: (Math.random() < 0.5 ? -1 : 1) * (75 + Math.random() * 45), y: -Math.random() * 200, z: 50 + Math.random() * 80 };
+      reef.rotation.z = (Math.random() * 2 - 1) * 0.2;
+      reef.position.set(reef.basePos.x, reef.basePos.y, reef.basePos.z);
+      this.reefs.push(reef);
+    }
+
+    // ---- a great whale that drifts across the far background for scale ----
+    this.whale = this._buildWhale(scene);
+    this.whale.setEnabled(false);
+    this.whaleActive = false;
+    this.whaleTimer = 6;
+  }
+
+  _buildWhale(scene) {
+    const w = new BABYLON.TransformNode("whale", scene);
+    const m = new BABYLON.StandardMaterial("whaleMat", scene);
+    m.diffuseColor = new BABYLON.Color3(0.1, 0.16, 0.24);
+    m.emissiveColor = new BABYLON.Color3(0.04, 0.07, 0.11);
+    m.specularColor = new BABYLON.Color3(0.1, 0.15, 0.2);
+    const body = BABYLON.MeshBuilder.CreateSphere("wbody", { diameterX: 20, diameterY: 5, diameterZ: 6, segments: 14 }, scene);
+    body.material = m; body.parent = w;
+    const tail = BABYLON.MeshBuilder.CreateCylinder("wtail", { height: 7, diameterTop: 7, diameterBottom: 0.2, tessellation: 3 }, scene);
+    tail.rotation.x = Math.PI / 2; tail.position.x = -11; tail.scaling.z = 0.25; tail.material = m; tail.parent = w;
+    for (const sx of [-1, 1]) {
+      const fin = BABYLON.MeshBuilder.CreateCylinder("wfin", { height: 6, diameterTop: 4, diameterBottom: 0.2, tessellation: 3 }, scene);
+      fin.position.set(2, -1, sx * 3.2); fin.rotation.x = sx * 1.1; fin.scaling.z = 0.3; fin.material = m; fin.parent = w;
+    }
+    const eye = BABYLON.MeshBuilder.CreateSphere("weye", { diameter: 0.6 }, scene);
+    eye.position.set(7.5, 1, 2.6);
+    const em = new BABYLON.StandardMaterial("wem", scene); em.emissiveColor = new BABYLON.Color3(0.2, 0.25, 0.3); em.diffuseColor = new BABYLON.Color3(0, 0, 0);
+    eye.material = em; eye.parent = w;
+    return w;
   }
 
   // cached billboard "value" label material per species (shared across all instances)
@@ -239,6 +293,7 @@ class Game {
 
     this.state = "diving";
     this.seabedGroup.setEnabled(false); this.audio.setJelly(0);
+    this.whaleActive = false; this.whale.setEnabled(false); this.whaleTimer = 6;
     ui.setDanger(false); ui.setCombo(1); ui.setScore(0); ui.setDepth(0, 0, MAX_METERS);
     ui.showScreen(null); ui.setHudVisible(true);
     this._prespawn(); this.canvas.focus();
@@ -339,6 +394,7 @@ class Game {
       m.position.y = m.basePos.y;
       m.position.z = m.basePos.z;
     }
+    this._updateBackdrop(dt, depthT);
 
     // spawn ahead / despawn behind
     while (this.nextSpawnY > diver.pos.y - SPAWN_AHEAD) { this._spawnRow(this.nextSpawnY); this.nextSpawnY -= ROW_GAP; }
@@ -376,6 +432,40 @@ class Game {
 
     ui.setDepth(depthT, depthT * MAX_METERS, MAX_METERS);
     if (diver.pos.y <= -DEPTH) this._win();
+  }
+
+  _updateBackdrop(dt, depthT) {
+    const t = performance.now() / 1000;
+    const camY = this.camera.position.y, d = this.diver.pos;
+
+    // caustic ripples projected from the surface — strong up top, gone by mid-depth
+    this.sunCaustic.position.set(d.x, d.y + 30, d.z);
+    this.sunCaustic.intensity = clamp(1 - depthT * 1.9, 0, 1) * 1.7;
+    if (this.causticProj) { this.causticProj.uOffset = t * 0.03; this.causticProj.vOffset = t * 0.02; }
+
+    // recycle distant reef silhouettes as we descend past them
+    for (const r of this.reefs) {
+      if (r.basePos.y > camY + 40) r.basePos.y -= 220;
+      else if (r.basePos.y < camY - 240) r.basePos.y += 220;
+      r.position.set(r.basePos.x, r.basePos.y, r.basePos.z);
+    }
+
+    // a whale drifts across the far background now and then
+    if (this.whaleActive) {
+      this.whale.position.x += this.whaleDir * 6 * dt;
+      this.whale.position.y = this.whaleY + Math.sin(t * 0.5) * 2;
+      this.whale.rotation.z = Math.sin(t * 0.6) * 0.05;
+      if (Math.abs(this.whale.position.x) > 145) { this.whaleActive = false; this.whale.setEnabled(false); this.whaleTimer = 12 + Math.random() * 16; }
+    } else {
+      this.whaleTimer -= dt;
+      if (this.whaleTimer <= 0 && depthT < 0.8) {
+        this.whaleDir = Math.random() < 0.5 ? 1 : -1;
+        this.whaleY = d.y - 8 - Math.random() * 22;
+        this.whale.position.set(-this.whaleDir * 140, this.whaleY, 75 + Math.random() * 45);
+        this.whale.rotation.y = this.whaleDir > 0 ? 0 : Math.PI;
+        this.whale.setEnabled(true); this.whaleActive = true;
+      }
+    }
   }
 
   _magnetAndCollide(dt) {
