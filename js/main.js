@@ -182,21 +182,6 @@ class Game {
     sunC.intensity = 0; sunC.range = 80;
     this.sunCaustic = sunC;
 
-    // ---- distant reef silhouettes far out to the sides (world-fixed, recycled) ----
-    const reefMat = new BABYLON.StandardMaterial("reefMat", scene);
-    reefMat.diffuseColor = new BABYLON.Color3(0.05, 0.09, 0.12);
-    reefMat.emissiveColor = new BABYLON.Color3(0.01, 0.03, 0.05);
-    reefMat.specularColor = new BABYLON.Color3(0, 0, 0);
-    this.reefs = [];
-    for (let i = 0; i < 7; i++) {
-      const reef = BABYLON.MeshBuilder.CreateCylinder("reef" + i, { height: 26 + Math.random() * 30, diameterBottom: 14 + Math.random() * 16, diameterTop: 0, tessellation: 6 }, scene);
-      reef.material = reefMat;
-      reef.basePos = { x: (Math.random() < 0.5 ? -1 : 1) * (75 + Math.random() * 45), y: -Math.random() * 200, z: 50 + Math.random() * 80 };
-      reef.rotation.z = (Math.random() * 2 - 1) * 0.2;
-      reef.position.set(reef.basePos.x, reef.basePos.y, reef.basePos.z);
-      this.reefs.push(reef);
-    }
-
     // ---- a great whale that drifts across the far background for scale ----
     this.whale = this._buildWhale(scene);
     this.whale.setEnabled(false);
@@ -436,19 +421,12 @@ class Game {
 
   _updateBackdrop(dt, depthT) {
     const t = performance.now() / 1000;
-    const camY = this.camera.position.y, d = this.diver.pos;
+    const d = this.diver.pos;
 
     // caustic ripples projected from the surface — strong up top, gone by mid-depth
     this.sunCaustic.position.set(d.x, d.y + 30, d.z);
     this.sunCaustic.intensity = clamp(1 - depthT * 1.9, 0, 1) * 1.7;
     if (this.causticProj) { this.causticProj.uOffset = t * 0.03; this.causticProj.vOffset = t * 0.02; }
-
-    // recycle distant reef silhouettes as we descend past them
-    for (const r of this.reefs) {
-      if (r.basePos.y > camY + 40) r.basePos.y -= 220;
-      else if (r.basePos.y < camY - 240) r.basePos.y += 220;
-      r.position.set(r.basePos.x, r.basePos.y, r.basePos.z);
-    }
 
     // a whale drifts across the far background now and then
     if (this.whaleActive) {
