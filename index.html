@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Damien's Under the Sea Adventure</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.babylonjs.com/babylon.js"></script>
+</head>
+<body>
+  <a id="arcade-link" href="https://aapearce.github.io/damiens-arcade/">🕹 Arcade</a>
+  <canvas id="renderCanvas" touch-action="none"></canvas>
+
+  <!-- ink splash overlay (octopus hit) -->
+  <div id="ink"></div>
+  <!-- red damage flash (shark hit) -->
+  <div id="flash"></div>
+
+  <!-- ===== HUD ===== -->
+  <div id="hud" class="hidden">
+    <button id="quit-btn" title="Quit to menu">✕ QUIT</button>
+
+    <div id="hud-left">
+      <div id="score">0</div>
+      <div id="score-label">POINTS</div>
+      <div id="danger" class="hidden">⚠ ONE HIT LEFT</div>
+    </div>
+
+    <div id="depth-wrap">
+      <div id="depth-label">DEPTH</div>
+      <div id="depth-bar"><div id="depth-fill"></div><div id="depth-diver">🤿</div></div>
+      <div id="depth-text">0m</div>
+    </div>
+
+    <div id="hint">← → steer &nbsp;•&nbsp; ↑ ↓ adjust &nbsp;•&nbsp; collect glowing species, dodge sharks &amp; octopuses</div>
+  </div>
+
+  <!-- ===== Start menu ===== -->
+  <div id="menu" class="screen">
+    <h1 class="title">UNDER<br><span>THE SEA</span></h1>
+    <p class="subtitle">Dive from the surface to the seabed. Swim into rare species for points — but don't get eaten or inked.</p>
+    <button id="dive-btn" class="big-btn">DIVE IN ▶</button>
+    <button id="show-board-btn" class="ghost-btn">🏆 Leaderboard</button>
+    <div class="legend">
+      <span class="leg"><b style="color:#ffd27f">●</b> Clownfish 10</span>
+      <span class="leg"><b style="color:#7fe9ff">●</b> Lanternfish 25</span>
+      <span class="leg"><b style="color:#c89bff">●</b> Jellyfish 45</span>
+      <span class="leg"><b style="color:#9dffce">●</b> Golden Angler 90</span>
+      <span class="leg danger">🦈 Shark &nbsp; 🐙 Octopus — avoid!</span>
+    </div>
+  </div>
+
+  <!-- ===== Game over ===== -->
+  <div id="over" class="screen hidden">
+    <h1 class="title over-title">GAME OVER</h1>
+    <p id="over-reason" class="subtitle"></p>
+    <button id="retry-btn" class="big-btn">DIVE AGAIN</button>
+    <button id="over-menu-btn" class="ghost-btn">Main menu</button>
+  </div>
+
+  <!-- ===== Win ===== -->
+  <div id="win" class="screen hidden">
+    <h1 class="title win-title">YOU REACHED<br>THE SEABED!</h1>
+    <div id="stars">★★★</div>
+    <p id="score-line" class="subtitle"></p>
+    <div id="name-entry">
+      <input id="name-input" maxlength="12" placeholder="Your name" />
+      <button id="save-score-btn" class="big-btn small">SAVE SCORE</button>
+    </div>
+    <button id="win-menu-btn" class="ghost-btn">Main menu</button>
+  </div>
+
+  <!-- ===== Leaderboard ===== -->
+  <div id="board" class="screen hidden">
+    <h1 class="title">🏆 TOP 10</h1>
+    <ol id="board-list"></ol>
+    <button id="board-back-btn" class="ghost-btn">Back</button>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
