@@ -26,15 +26,33 @@ export class SeaAudio {
     this.dlfoGain = ctx.createGain(); this.dlfoGain.gain.value = 0; this.dlfo.connect(this.dlfoGain);
     this.dlfoGain.connect(this.dangerGain.gain); this.dlfo.start();
 
+    // eerie jellyfish shimmer — high, detuned, wavering
+    this.jellyGain = ctx.createGain(); this.jellyGain.gain.value = 0; this.jellyGain.connect(this.master);
+    const jbp = ctx.createBiquadFilter(); jbp.type = "bandpass"; jbp.frequency.value = 1400; jbp.Q.value = 5; jbp.connect(this.jellyGain);
+    const j1 = ctx.createOscillator(); j1.type = "sine"; j1.frequency.value = 720;
+    const j2 = ctx.createOscillator(); j2.type = "sine"; j2.frequency.value = 731;
+    j1.connect(jbp); j2.connect(jbp); j1.start(); j2.start();
+    this.jlfo = ctx.createOscillator(); this.jlfo.type = "sine"; this.jlfo.frequency.value = 6;
+    this.jlfoGain = ctx.createGain(); this.jlfoGain.gain.value = 60; this.jlfo.connect(this.jlfoGain);
+    this.jlfoGain.connect(j1.frequency); this.jlfo.start();
+
     this.started = true;
   }
   resume() { if (this.ctx && this.ctx.state === "suspended") this.ctx.resume(); }
 
+  // low ominous drone — sharks / octopuses nearby
   setDanger(x) {
     if (!this.started) return;
     const t = this.ctx.currentTime, k = Math.max(0, Math.min(1, x));
     this.dlfoGain.gain.setTargetAtTime(k * 0.16, t, 0.2);
     this.dlfo.frequency.setTargetAtTime(1.2 + k * 2.4, t, 0.2);
+  }
+
+  // eerie high shimmer — jellyfish nearby
+  setJelly(x) {
+    if (!this.started) return;
+    const t = this.ctx.currentTime, k = Math.max(0, Math.min(1, x));
+    this.jellyGain.gain.setTargetAtTime(k * 0.05, t, 0.25);
   }
 
   // rising chime; higher pitch for bigger combos

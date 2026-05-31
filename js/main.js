@@ -8,8 +8,8 @@ const DEPTH = 300;
 const MAX_METERS = 200;
 const DESCENT_SPEED = 9;
 const STEER = 17;
-const ROW_GAP = 13;
-const SPAWN_AHEAD = 115;
+const ROW_GAP = 10;
+const SPAWN_AHEAD = 120;
 const HIT_INVULN = 1.6;
 const SHARK_PENALTY = 60, OCTO_PENALTY = 40, JELLY_PENALTY = 35;
 const MAGNET = 6, COLLECT_PAD = 0.6;
@@ -150,21 +150,53 @@ class Game {
     bubbles.start();
     this.bubbles = bubbles;
 
-    // seabed with caustic shimmer
+    // seabed with caustic shimmer — hidden until the diver is near, so there is no
+    // far-off "floor" rectangle making the open water feel like a box.
+    this.seabedGroup = new BABYLON.TransformNode("seabedGroup", scene);
     const caustic = this._causticTexture(scene); this.causticTex = caustic;
-    const seabed = BABYLON.MeshBuilder.CreateGround("seabed", { width: 240, height: 240 }, scene);
-    seabed.position.y = -DEPTH - 2;
+    const seabed = BABYLON.MeshBuilder.CreateGround("seabed", { width: 260, height: 260 }, scene);
+    seabed.position.y = -DEPTH - 2; seabed.parent = this.seabedGroup;
     const sbMat = new BABYLON.StandardMaterial("sbMat", scene);
     sbMat.diffuseColor = new BABYLON.Color3(0.1, 0.16, 0.18);
     sbMat.emissiveTexture = caustic; sbMat.emissiveColor = new BABYLON.Color3(0.35, 0.65, 0.75);
     seabed.material = sbMat;
     for (let i = 0; i < 16; i++) {
       const rock = BABYLON.MeshBuilder.CreateSphere("rock", { diameter: 3 + Math.random() * 7, segments: 5 }, scene);
-      rock.position.set((Math.random() * 2 - 1) * 100, -DEPTH - 1, (Math.random() * 2 - 1) * 100);
-      rock.scaling.y = 0.45;
+      rock.position.set((Math.random() * 2 - 1) * 110, -DEPTH - 1, (Math.random() * 2 - 1) * 110);
+      rock.scaling.y = 0.45; rock.parent = this.seabedGroup;
       const rm = new BABYLON.StandardMaterial("rm", scene); rm.diffuseColor = new BABYLON.Color3(0.08, 0.12, 0.14);
       rock.material = rm;
     }
+    this.seabedGroup.setEnabled(false);
+    this.labelMats = {};
+  }
+
+  // cached billboard "value" label material per species (shared across all instances)
+  _labelMaterial(key, points, color) {
+    if (this.labelMats[key]) return this.labelMats[key];
+    const dt = new BABYLON.DynamicTexture("lbl_" + key, { width: 128, height: 64 }, this.scene, false);
+    const ctx = dt.getContext();
+    ctx.clearRect(0, 0, 128, 64);
+    ctx.font = "bold 44px Trebuchet MS, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const hex = `rgb(${Math.round(color[0] * 255)},${Math.round(color[1] * 255)},${Math.round(color[2] * 255)})`;
+    ctx.lineWidth = 6; ctx.strokeStyle = "rgba(0,0,0,0.8)"; ctx.strokeText("+" + points, 64, 34);
+    ctx.fillStyle = hex; ctx.fillText("+" + points, 64, 34);
+    dt.hasAlpha = true; dt.update();
+    const m = new BABYLON.StandardMaterial("lblm_" + key, this.scene);
+    m.diffuseTexture = dt; m.opacityTexture = dt; m.emissiveColor = new BABYLON.Color3(1, 1, 1);
+    m.disableLighting = true; m.backFaceCulling = false;
+    this.labelMats[key] = m;
+    return m;
+  }
+
+  _attachLabel(c) {
+    const plane = BABYLON.MeshBuilder.CreatePlane("lbl", { width: 2.4, height: 1.2 }, this.scene);
+    plane.material = this._labelMaterial(c.typeKey, c.points, c.def.color);
+    plane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+    plane.position.y = c.radius + 1.0;
+    plane.parent = c.root;
+    plane.isPickable = false;
   }
 
   _gradientTexture(scene) {
@@ -206,6 +238,7 @@ class Game {
     this.pointerActive = false;
 
     this.state = "diving";
+    this.seabedGroup.setEnabled(false); this.audio.setJelly(0);
     ui.setDanger(false); ui.setCombo(1); ui.setScore(0); ui.setDepth(0, 0, MAX_METERS);
     ui.showScreen(null); ui.setHudVisible(true);
     this._prespawn(); this.canvas.focus();
@@ -218,9 +251,9 @@ class Game {
     const depthT = Math.min(1, -y / DEPTH);
 
     // chance of a fish school (Abzû-style flock you swim through)
-    if (Math.random() < 0.28) { this._spawnSchool(y); return; }
+    if (Math.random() < 0.32) { this._spawnSchool(y); return; }
 
-    const count = 1 + (Math.random() < 0.5 ? 1 : 0) + (Math.random() < 0.2 ? 1 : 0);
+    const count = 2 + (Math.random() < 0.6 ? 1 : 0) + (Math.random() < 0.3 ? 1 : 0);
     let hazards = 0;
     const hazardChance = Math.min(0.4, 0.1 + depthT * 0.28);
     for (let i = 0; i < count; i++) {
@@ -232,6 +265,7 @@ class Game {
       } else key = randomSpeciesKey(depthT);
       const c = new Creature(this.scene, this.glow, key);
       c.setPos((Math.random() * 2 - 1) * PLAY_HALF_X, y + (Math.random() * 2 - 1) * 4, (Math.random() * 2 - 1) * PLAY_HALF_Z);
+      if (!c.hazard) this._attachLabel(c);
       this.creatures.push(c);
     }
   }
@@ -312,21 +346,26 @@ class Game {
     for (const f of this.flocks) { f.x += f.vx * dt; if (Math.abs(f.x) > PLAY_HALF_X) f.vx *= -1; }
 
     const ctx = { diver: diver.pos };
-    let nearestHunt = Infinity;
+    let nearestPred = Infinity, nearestJelly = Infinity;
     for (let i = this.creatures.length - 1; i >= 0; i--) {
       const c = this.creatures[i];
       c.update(dt, ctx);
-      if (c.hunting) {
+      if (c.hazard) {
         const d = Math.hypot(diver.pos.x - c.pos.x, diver.pos.y - c.pos.y, diver.pos.z - c.pos.z);
-        if (d < nearestHunt) nearestHunt = d;
+        if (c.typeKey === "jelly") { if (d < nearestJelly) nearestJelly = d; }
+        else if (d < nearestPred) nearestPred = d;
       }
       const passed = c.pos.y > diver.pos.y + 22;
       if (passed) { if (c.flock) c.flock.alive--; c.dispose(); this.creatures.splice(i, 1); }
     }
     this.flocks = this.flocks.filter((f) => f.alive > 0);
 
-    // danger audio swells as the nearest hunter closes in
-    this.audio.setDanger(nearestHunt < 30 ? 1 - nearestHunt / 30 : 0);
+    // ominous audio: low drone for nearby sharks/octopuses, eerie shimmer for jellyfish
+    this.audio.setDanger(nearestPred < 34 ? 1 - nearestPred / 34 : 0);
+    this.audio.setJelly(nearestJelly < 24 ? 1 - nearestJelly / 24 : 0);
+
+    // reveal the seabed only when close (no far-off floor rectangle)
+    this.seabedGroup.setEnabled(depthT > 0.72);
 
     if (this.invuln > 0) this.invuln -= dt;
     if (this.comboTimer > 0) { this.comboTimer -= dt; if (this.comboTimer <= 0) { this.combo = 0; ui.setCombo(1); } }
@@ -410,7 +449,7 @@ class Game {
   }
 
   _gameOver(by) {
-    this.state = "over"; ui.setHudVisible(false); ui.setDanger(false); this.audio.setDanger(0);
+    this.state = "over"; ui.setHudVisible(false); ui.setDanger(false); this.audio.setDanger(0); this.audio.setJelly(0);
     ui.dom.overReason.textContent =
       by === "octopus" ? "An octopus inked you twice — the dive is lost." :
       by === "jelly" ? "Stung once too often — the dive is lost." :
@@ -419,7 +458,7 @@ class Game {
   }
 
   _win() {
-    this.state = "win"; ui.setHudVisible(false); ui.setDanger(false); this.audio.setDanger(0); this.audio.win();
+    this.state = "win"; ui.setHudVisible(false); ui.setDanger(false); this.audio.setDanger(0); this.audio.setJelly(0); this.audio.win();
     const flawless = this.hits === 0 ? 600 : this.hits === 1 ? 200 : 0;
     this.score += flawless;
     const final = Math.round(this.score);
@@ -431,7 +470,7 @@ class Game {
     ui.showScreen(ui.dom.win); setTimeout(() => ui.dom.nameInput.focus(), 50);
   }
 
-  quitToMenu() { this.state = "menu"; this.audio.setDanger(0); ui.setHudVisible(false); ui.showScreen(ui.dom.menu); }
+  quitToMenu() { this.state = "menu"; this.audio.setDanger(0); this.audio.setJelly(0); ui.setHudVisible(false); ui.showScreen(ui.dom.menu); }
 
   _bindInput() {
     const set = (k, v) => {
